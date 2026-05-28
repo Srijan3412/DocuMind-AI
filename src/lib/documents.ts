@@ -1,4 +1,3 @@
-import { supabase } from "@/integrations/supabase/client";
 import type { AnalysisResult } from "@/lib/analyze.functions";
 
 export type DocStatus = "queued" | "processing" | "completed" | "failed";
@@ -16,6 +15,7 @@ export interface DocumentRow {
   updated_at: string;
 }
 
+const STORAGE_KEY = "doc-analyzer-history";
 const SESSION_KEY = "doc-analyzer-session";
 
 export function getSessionId(): string {
@@ -28,58 +28,86 @@ export function getSessionId(): string {
   return id;
 }
 
+function getStoredDocuments(): DocumentRow[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch (e) {
+    console.error("Error reading document history from localStorage:", e);
+    return [];
+  }
+}
+
+function setStoredDocuments(docs: DocumentRow[]) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(docs));
+  } catch (e) {
+    console.error("Error saving document history to localStorage:", e);
+  }
+}
+
 export async function createDocumentRecord(file: {
   name: string;
   size: number;
   type: string;
 }): Promise<DocumentRow> {
-  const { data, error } = await supabase
-    .from("documents")
-    .insert({
-      session_id: getSessionId(),
-      file_name: file.name,
-      file_size: file.size,
-      file_type: file.type || "application/pdf",
-      status: "processing",
-    })
-    .select()
-    .single();
-  if (error) throw error;
-  return data as unknown as DocumentRow;
+  const newDoc: DocumentRow = {
+    id: crypto.randomUUID(),
+    session_id: getSessionId(),
+    file_name: file.name,
+    file_size: file.size,
+    file_type: file.type || "application/pdf",
+    status: "processing",
+    result: null,
+    error: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  const docs = getStoredDocuments();
+  docs.unshift(newDoc);
+  setStoredDocuments(docs);
+
+  return newDoc;
 }
 
 export async function completeDocumentRecord(
   id: string,
   result: AnalysisResult,
 ): Promise<void> {
-  const { error } = await supabase
-    .from("documents")
-    .update({ status: "completed", result: result as never, updated_at: new Date().toISOString() })
-    .eq("id", id);
-  if (error) throw error;
+  const docs = getStoredDocuments();
+  const index = docs.findIndex((d) => d.id === id);
+  if (index !== -1) {
+    docs[index].status = "completed";
+    docs[index].result = result;
+    docs[index].updated_at = new Date().toISOString();
+    setStoredDocuments(docs);
+  }
 }
 
 export async function failDocumentRecord(id: string, message: string): Promise<void> {
-  await supabase
-    .from("documents")
-    .update({ status: "failed", error: message, updated_at: new Date().toISOString() })
-    .eq("id", id);
+  const docs = getStoredDocuments();
+  const index = docs.findIndex((d) => d.id === id);
+  if (index !== -1) {
+    docs[index].status = "failed";
+    docs[index].error = message;
+    docs[index].updated_at = new Date().toISOString();
+    setStoredDocuments(docs);
+  }
 }
 
 export async function fetchHistory(): Promise<DocumentRow[]> {
-  const { data, error } = await supabase
-    .from("documents")
-    .select("*")
-    .eq("session_id", getSessionId())
-    .order("created_at", { ascending: false })
-    .limit(50);
-  if (error) throw error;
-  return (data ?? []) as unknown as DocumentRow[];
+  const sessionId = getSessionId();
+  // Return records belonging to the current session (matches Supabase filter)
+  return getStoredDocuments().filter((d) => d.session_id === sessionId);
 }
 
 export async function deleteDocument(id: string): Promise<void> {
-  const { error } = await supabase.from("documents").delete().eq("id", id);
-  if (error) throw error;
+  const docs = getStoredDocuments();
+  const filtered = docs.filter((d) => d.id !== id);
+  setStoredDocuments(filtered);
 }
 
 export function exportAsJson(doc: DocumentRow) {
