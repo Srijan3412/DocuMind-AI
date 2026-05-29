@@ -2,17 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState, useRef } from "react";
 import { Toaster, toast } from "sonner";
 import {
-  ScanText,
-  Sparkles,
-  Zap,
-  ShieldCheck,
   RotateCcw,
-  ArrowRight,
-  Database,
-  Terminal,
-  Cpu,
-  History,
-  FileCode,
   LayoutDashboard
 } from "lucide-react";
 import {
@@ -26,6 +16,7 @@ import {
   createDocumentRecord,
   deleteDocument,
   fetchHistory,
+  failDocumentRecord,
   type DocumentRow,
 } from "@/lib/documents";
 import { Dropzone } from "@/components/Dropzone";
@@ -507,10 +498,10 @@ function Index() {
                 AI
               </div>
               <div className="text-sm font-medium">Cloud Run Worker</div>
-              <div className="text-xs text-accent">Gemini Pro 1.5</div>
+              <div className="text-xs text-accent">Gemini 2.5 Flash</div>
             </div>
             <PipelineConnector />
-            <PipelineStep n="04" label="Supabase Firestore" sub="Persistent State & History" />
+            <PipelineStep n="04" label="Firestore Database" sub="Persistent State & History" />
           </div>
         </div>
       </section>
