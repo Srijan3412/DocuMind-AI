@@ -1,4 +1,3 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState, useRef } from "react";
 import { Toaster, toast } from "sonner";
 import {
@@ -29,25 +28,6 @@ import caseResume from "@/assets/case-resume.jpg";
 import caseInvoice from "@/assets/case-invoice.jpg";
 import caseLegal from "@/assets/case-legal.jpg";
 
-export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "DocIntel AI — Raw papers to structured signals" },
-      {
-        name: "description",
-        content:
-          "Industrial-grade document intelligence. Async PDF processing with Gemini AI, Pub/Sub, Cloud Run, and Firestore.",
-      },
-      { property: "og:title", content: "DocIntel AI — Raw papers to structured signals" },
-      {
-        property: "og:description",
-        content: "Async AI pipeline that turns documents into structured insights.",
-      },
-    ],
-  }),
-  component: Index,
-});
-
 const INITIAL_STEPS: Step[] = [
   { key: "upload", label: "File Upload & Verification", detail: "Uploading file to AI pipeline", state: "pending" },
   { key: "layout", label: "Document Layout Recognition", detail: "Extracting text and identifying structure", state: "pending" },
@@ -57,7 +37,7 @@ const INITIAL_STEPS: Step[] = [
 
 type View = "idle" | "processing" | "result";
 
-function Index() {
+export default function Index() {
   const [view, setView] = useState<View>("idle");
   const [steps, setSteps] = useState<Step[]>(INITIAL_STEPS);
   const [currentName, setCurrentName] = useState("");
